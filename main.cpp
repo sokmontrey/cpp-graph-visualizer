@@ -118,8 +118,8 @@ Node *hoveredNode(vector<Node *> &nodes, Vector2 pos, float radius) {
 int main() {
   srand((unsigned)time(NULL));
 
-  Graph g;
-  vector<Node *> &nodes = g.getNodesList();
+  Graph graph;
+  vector<Node *> &nodes = graph.getNodesList();
 
   bool is_create = false;
   string input = "";
@@ -127,9 +127,7 @@ int main() {
   Node *selected_node = nullptr;
 
   InitWindow(WIDTH, HEIGHT, "Graph visualizer");
-
   SetTargetFPS(60);
-
   while (!WindowShouldClose()) {
     /* Logic */
 
@@ -177,26 +175,21 @@ int main() {
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
       // Move nodes with mouse
-      if (mode == EDIT) {
-        Node *hovered_node = hoveredNode(nodes, GetMousePosition(), RADIUS);
-        if (hovered_node != nullptr)
+      Node *hovered_node = hoveredNode(nodes, GetMousePosition(), RADIUS);
+      if (hovered_node != nullptr) {
+        if (mode == EDIT) {
           hovered_node->point.setPos(GetMousePosition());
-        // connect nodes
-      } else if (mode == CONNECT) {
-        Node *current_hovered_node =
-            hoveredNode(nodes, GetMousePosition(), RADIUS);
-        if (current_hovered_node != nullptr) {
-          g.connectTo(selected_node->getName(), current_hovered_node->getName(),
-                      1);
+          // connect nodes
+        } else if (mode == CONNECT) {
+          graph.connectTo(selected_node->getName(), hovered_node->getName(), 1);
           selected_node = nullptr;
           mode = EDIT;
         }
-      }
+      } 
     } else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-      Node *current_hovered_node =
-          hoveredNode(nodes, GetMousePosition(), RADIUS);
-      if (current_hovered_node != nullptr) {
-        selected_node = current_hovered_node;
+      Node *hovered_node = hoveredNode(nodes, GetMousePosition(), RADIUS);
+      if (hovered_node != nullptr) {
+        selected_node = hovered_node;
         mode = CONNECT;
       }
     }
@@ -206,9 +199,11 @@ int main() {
       mode = INSERT;
     } else if (mode == INSERT && IsKeyPressed(KEY_ENTER)) {
       mode = EDIT;
-      g.addNode(input);
-      g.getNode(input)->point.setPos(GetMousePosition());
-      input = "";
+      if (input != "") {
+        graph.addNode(input);
+        graph.getNode(input)->point.setPos(GetMousePosition());
+        input = "";
+      }
     } else if (mode == INSERT) {
       int key = GetKeyPressed();
       if (key >= 32 && key <= 125) {
@@ -216,12 +211,16 @@ int main() {
       } else if (key == KEY_BACKSPACE) {
         input = input.substr(0, input.size() - 1);
       }
-      DrawText(input.c_str(), 10, HEIGHT - 60, 20, BLUE);
     }
 
     BeginDrawing();
     ClearBackground(WHITE);
     /* Rendering */
+
+		// display user input
+		if (mode == INSERT) {
+			DrawText(input.c_str(), 10, HEIGHT - 60, 20, BLUE);
+		}
 
     // display mode
     DrawText(mode_to_string[mode].c_str(), 10, HEIGHT - 30, 20,
