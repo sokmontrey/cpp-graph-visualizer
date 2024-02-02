@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <raylib.h>
 #include <raymath.h>
 #include <string>
@@ -65,9 +66,7 @@ public:
     return *this;
   }
 
-	Node* getNode(string node_name) {
-		return &this->nodes[node_name];
-	}
+  Node *getNode(string node_name) { return &this->nodes[node_name]; }
 
   Graph &connect(string node1_name, string node2_name, double weight) {
     this->nodes[node1_name].connectTo(&this->nodes[node2_name], weight);
@@ -87,6 +86,35 @@ private:
   vector<Node *> nodes_list;
 };
 
+enum MODE {
+  INSERT,
+  EDIT,
+  CONNECT,
+};
+
+map<MODE, string> mode_to_string = {
+    {INSERT, "INSERT"},
+    {EDIT, "EDIT"},
+    {CONNECT, "CONNECT"},
+};
+
+map<MODE, Color> mode_to_color = {
+    {INSERT, RED},
+    {EDIT, BLUE},
+    {CONNECT, GREEN},
+};
+
+Node *hoveredNode(vector<Node *> &nodes, Vector2 pos, float radius) {
+  for (Node *node : nodes) {
+    Vector2 node_pos = node->point.getPos();
+    float d = Vector2Distance(pos, node_pos);
+    if (d < radius) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
 int main() {
   srand((unsigned)time(NULL));
 
@@ -95,6 +123,8 @@ int main() {
 
   bool is_create = false;
   string input = "";
+  MODE mode = EDIT;
+  Node *selected_node = nullptr;
 
   InitWindow(WIDTH, HEIGHT, "Graph visualizer");
 
@@ -145,39 +175,57 @@ int main() {
       }
     }
 
-    // Move nodes with mouse
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-      for (Node *node : nodes) {
-        Vector2 pos = node->point.getPos();
-        Vector2 mouse_pos = GetMousePosition();
-        float d = Vector2Distance(mouse_pos, pos);
-        if (d < RADIUS) {
-          node->point.setPos(mouse_pos);
-          break;
+      // Move nodes with mouse
+      if (mode == EDIT) {
+        Node *hovered_node = hoveredNode(nodes, GetMousePosition(), RADIUS);
+        if (hovered_node != nullptr)
+          hovered_node->point.setPos(GetMousePosition());
+        // connect nodes
+      } else if (mode == CONNECT) {
+        Node *current_hovered_node =
+            hoveredNode(nodes, GetMousePosition(), RADIUS);
+        if (current_hovered_node != nullptr) {
+          g.connectTo(selected_node->getName(), current_hovered_node->getName(),
+                      1);
+          selected_node = nullptr;
+          mode = EDIT;
         }
+      }
+    } else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+      Node *current_hovered_node =
+          hoveredNode(nodes, GetMousePosition(), RADIUS);
+      if (current_hovered_node != nullptr) {
+        selected_node = current_hovered_node;
+        mode = CONNECT;
       }
     }
 
     // create new node
-    if (IsKeyPressed(KEY_A)) {
-      is_create = true;
-    } else if (IsKeyPressed(KEY_ENTER)) {
-      is_create = false;
-			g.addNode(input);
-			g.getNode(input)->point.setPos(GetMousePosition());
+    if (mode == EDIT && IsKeyPressed(KEY_SPACE)) {
+      mode = INSERT;
+    } else if (mode == INSERT && IsKeyPressed(KEY_ENTER)) {
+      mode = EDIT;
+      g.addNode(input);
+      g.getNode(input)->point.setPos(GetMousePosition());
       input = "";
-    } else {
-			int key = GetKeyPressed();
+    } else if (mode == INSERT) {
+      int key = GetKeyPressed();
       if (key >= 32 && key <= 125) {
         input += static_cast<char>(key);
+      } else if (key == KEY_BACKSPACE) {
+        input = input.substr(0, input.size() - 1);
       }
+      DrawText(input.c_str(), 10, HEIGHT - 60, 20, BLUE);
     }
-
-    // connect nodes
 
     BeginDrawing();
     ClearBackground(WHITE);
     /* Rendering */
+
+    // display mode
+    DrawText(mode_to_string[mode].c_str(), 10, HEIGHT - 30, 20,
+             mode_to_color[mode]);
 
     // draw all connections
     for (Node *node : nodes) {
@@ -192,7 +240,14 @@ int main() {
     for (Node *node : nodes) {
       Vector2 pos = node->point.getPos();
       DrawCircleV(pos, RADIUS, BLUE);
-      DrawText(node->getName().c_str(), pos.x - 7, pos.y - 10, RADIUS, WHITE);
+      string node_name = node->getName();
+      DrawText(node_name.c_str(), pos.x + RADIUS + 10, pos.y - 5, 15, GRAY);
+    }
+
+    // visualize selected node for connection
+    if (selected_node != nullptr) {
+      DrawCircleV(selected_node->point.getPos(), RADIUS, RED);
+      DrawLineEx(selected_node->point.getPos(), GetMousePosition(), 3, RED);
     }
 
     EndDrawing();
