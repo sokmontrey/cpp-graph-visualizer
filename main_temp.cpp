@@ -1,4 +1,5 @@
-#include <ctime>
+#include <cstdlib>
+#include <iostream>
 #include <map>
 #include <raylib.h>
 #include <raymath.h>
@@ -6,10 +7,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "graph.hpp"
-#include "node.hpp"
-#include "point.hpp"
 
 using namespace std;
 
@@ -22,6 +19,72 @@ using namespace std;
 
 #define DISTANCE_CONSTRAINT_FACTOR 0.1
 #define DISTANCE_MAX_DISTANCE 120
+
+class Point {
+public:
+  Point() = default;
+
+  Vector2 getPos() { return this->pos; }
+
+  void setPos(Vector2 new_pos) { this->pos = new_pos; }
+
+private:
+  Vector2 pos = {static_cast<float>(300 + rand() % (100)),
+                 static_cast<float>(100 + rand() % (250))};
+};
+
+class Node {
+public:
+  Point point;
+
+  Node() = default;
+  Node(string name) { this->name = name; }
+
+  void connectTo(Node *other, double weight) {
+    this->connected.push_back({other, weight});
+  }
+
+  void visit() { this->is_visited = true; }
+
+  vector<pair<Node *, double>> &getConnected() { return this->connected; }
+
+  string getName() { return this->name; }
+
+private:
+  vector<pair<Node *, double>> connected;
+  bool is_visited = false;
+  string name = "";
+};
+
+class Graph {
+public:
+  Graph() = default;
+
+  Graph &addNode(string node_name) {
+    this->nodes[node_name] = Node(node_name);
+    nodes_list.push_back(&this->nodes[node_name]);
+    return *this;
+  }
+
+  Node *getNode(string node_name) { return &this->nodes[node_name]; }
+
+  Graph &connect(string node1_name, string node2_name, double weight) {
+    this->nodes[node1_name].connectTo(&this->nodes[node2_name], weight);
+    this->nodes[node2_name].connectTo(&this->nodes[node1_name], weight);
+    return *this;
+  }
+
+  Graph &connectTo(string node1_name, string node2_name, double weight) {
+    this->nodes[node1_name].connectTo(&this->nodes[node2_name], weight);
+    return *this;
+  }
+
+  vector<Node *> &getNodesList() { return this->nodes_list; }
+
+private:
+  unordered_map<string, Node> nodes;
+  vector<Node *> nodes_list;
+};
 
 enum MODE {
   INSERT,
@@ -122,7 +185,7 @@ int main() {
           selected_node = nullptr;
           mode = EDIT;
         }
-      }
+      } 
     } else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
       Node *hovered_node = hoveredNode(nodes, GetMousePosition(), RADIUS);
       if (hovered_node != nullptr) {
@@ -154,10 +217,10 @@ int main() {
     ClearBackground(WHITE);
     /* Rendering */
 
-    // display user input
-    if (mode == INSERT) {
-      DrawText(input.c_str(), 10, HEIGHT - 60, 20, BLUE);
-    }
+		// display user input
+		if (mode == INSERT) {
+			DrawText(input.c_str(), 10, HEIGHT - 60, 20, BLUE);
+		}
 
     // display mode
     DrawText(mode_to_string[mode].c_str(), 10, HEIGHT - 30, 20,
