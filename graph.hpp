@@ -11,10 +11,11 @@ class Graph {
 public:
   Graph() = default;
 
-  Graph &addNode(string node_name) {
+  Node* addNode() { return this->addNode(to_string(this->nodes.size())); }
+  Node* addNode(string node_name) {
     this->nodes[node_name] = Node(node_name);
     nodes_list.push_back(&this->nodes[node_name]);
-    return *this;
+    return &this->nodes[node_name];
   }
 
   Node *getNode(string node_name) { return &this->nodes[node_name]; }
@@ -30,10 +31,11 @@ public:
     return *this;
   }
 
+  int size() { return this->nodes.size(); }
+
   vector<Node *> &getNodesList() { return this->nodes_list; }
 
 private:
   unordered_map<string, Node> nodes;
   vector<Node *> nodes_list;
 };
-
